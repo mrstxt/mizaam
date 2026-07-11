@@ -79,7 +79,7 @@ function filterMenu(menu: MenuSection[], user: SessionUser | null) {
   return menu
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => user.role === "admin" || user.panels.includes(item.panel)),
+      items: section.items.filter((item) => user.panels.includes(item.panel)),
     }))
     .filter((section) => section.items.length > 0);
 }
@@ -183,35 +183,41 @@ export default function Sidebar() {
         </div>
 
         {!collapsed ? (
-          <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
-            <Link
-              href="/"
-              className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all ${
-                !isSuperAdmin ? "bg-[#0071e3] text-white shadow" : "text-white/60 hover:text-white"
-              }`}
-            >
-              🏢 Panel
-            </Link>
-            {(user?.role === "admin" || user?.panels.includes("superadmin")) && (
+          user?.role === "admin" ? (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 text-center">
+              ⚡ Faqat Admin Panel
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
               <Link
-                href="/superadmin"
-                className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all flex items-center justify-center gap-1 ${
-                  isSuperAdmin
-                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow font-semibold"
-                    : "text-amber-400/80 hover:text-amber-300"
+                href="/"
+                className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all ${
+                  !isSuperAdmin ? "bg-[#0071e3] text-white shadow" : "text-white/60 hover:text-white"
                 }`}
               >
-                <span>⚡ Admin</span>
+                🏢 Panel
               </Link>
-            )}
-          </div>
+              {user?.panels.includes("superadmin") && (
+                <Link
+                  href="/superadmin"
+                  className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all flex items-center justify-center gap-1 ${
+                    isSuperAdmin
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow font-semibold"
+                      : "text-amber-400/80 hover:text-amber-300"
+                  }`}
+                >
+                  <span>⚡ Admin</span>
+                </Link>
+              )}
+            </div>
+          )
         ) : (
           <Link
-            href={isSuperAdmin ? "/" : "/superadmin"}
+            href={user?.role === "admin" ? "/superadmin" : isSuperAdmin ? "/" : "/superadmin"}
             className="w-full py-2 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-            title={isSuperAdmin ? "Korxona paneliga o'tish" : "Admin paneliga o'tish"}
+            title={user?.role === "admin" ? "Admin panel" : isSuperAdmin ? "Korxona paneliga o'tish" : "Admin paneliga o'tish"}
           >
-            {isSuperAdmin ? "🏢" : "⚡"}
+            {user?.role === "admin" || !isSuperAdmin ? "⚡" : "🏢"}
           </Link>
         )}
       </div>

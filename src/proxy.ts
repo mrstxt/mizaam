@@ -40,6 +40,13 @@ export async function proxy(request: NextRequest) {
   }
 
   const panel = getPanelForPath(pathname);
+  if (session.role === "admin" && panel && panel !== "superadmin") {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ ok: false, error: "Admin faqat admin paneldan foydalanadi" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/superadmin", request.url));
+  }
+
   if (panel && !hasPanelAccess(session.role, session.panels, panel)) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ ok: false, error: "Bu panelga ruxsat yo'q" }, { status: 403 });

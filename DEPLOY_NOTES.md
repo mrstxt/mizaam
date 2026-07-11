@@ -1,8 +1,10 @@
-# MIZAAM deploy va login tizimi
+# MIZAAM deploy va login struktura
 
-## Hozirgi login talabi
+## Yakuniy login/rol struktura
 
-Admin panelga kirish:
+### 1) Platform admin
+
+Admin faqat platforma admin panelga kiradi. Admin uchun korxona/HR paneli ochilmaydi.
 
 ```text
 /login
@@ -10,19 +12,64 @@ login: admin
 parol: admin123
 ```
 
-Agar database ichida admin user bo'lmasa, birinchi login paytida tizim `admin / admin123` accountni avtomatik yaratadi. Agar eski deployda admin bor-u parol boshqacha bo'lgan bo'lsa, admin paroli `admin123` ga bootstrap qilinadi. Admin sidebar pastidagi **Parolni o'zgartirish** tugmasi orqali parolni almashtirgandan keyin `admin123` qayta ishlamaydi.
+Admin login qilganda avtomatik `/superadmin` ga kiradi. Agar admin `/`, `/employees`, `/tasks` kabi korxona panellariga o'tmoqchi bo'lsa, tizim uni yana `/superadmin` ga qaytaradi.
 
-## Qo'shilgan funksiyalar
+Admin sidebar pastidan **Parolni o'zgartirish** orqali parolini almashtira oladi. Admin parol o'zgartirilgandan keyin `admin123` qayta ishlamaydi.
 
-- `/login` sahifasi login/parol orqali kiradi.
-- Admin default: `admin / admin123`.
-- Admin kirgandan keyin parolni o'zgartira oladi.
-- Admin panelda korxona qo'shilganda HR uchun login, parol va login link avtomatik chiqadi.
-- Korxona kartasida **HR link** tugmasi bor: HR parolini reset qilib yangi link/parol chiqaradi.
-- HR xodim qo'shganda xodim uchun login, parol va login link avtomatik chiqadi.
-- Agar xodim qo'shishda login/parol bo'sh qoldirilsa, tizim o'zi yaratadi.
-- `tenant_id` qo'shildi: HR yaratgan xodim shu kompaniyaga bog'lanadi.
-- Backend auth/session va panel access himoyasi saqlangan.
+### 2) Admin kompaniya qo'shadi
+
+Admin `/superadmin/tenants` sahifasidan kompaniya qo'shadi.
+
+Kompaniya qo'shishda HR login va HR parol **majburiy**:
+
+```text
+HR login
+HR parol
+```
+
+Kompaniya saqlangandan keyin tizim admin uchun HR kirish ma'lumotlarini chiqaradi:
+
+```text
+HR link
+HR login
+HR parol
+```
+
+Admin shu ma'lumotlarni kompaniya HR'iga yuboradi.
+
+### 3) HR katta korxona paneliga kiradi
+
+HR admin bergan link/login/parol bilan kiradi va korxona katta panelini ko'radi:
+
+- dashboard
+- xodimlar
+- davomat
+- vazifalar
+- hisobotlar
+- moliya
+- oylik
+- analitika
+- qoidalar
+- CRM
+- marketing
+- integratsiyalar
+- chat
+- support
+- bildirishnomalar
+
+HR platform admin paneliga kira olmaydi.
+
+### 4) HR xodim qo'shadi
+
+HR `/employees` sahifasidan xodim qo'shadi. Xodim qo'shilgandan keyin tizim chiqaradi:
+
+```text
+Xodim link
+Xodim login
+Xodim parol
+```
+
+Agar HR login/parol maydonlarini bo'sh qoldirsa, tizim xodim uchun avtomatik login/parol yaratadi.
 
 ## Render Environment Variables
 
@@ -53,22 +100,7 @@ Start Command:
 npm run start
 ```
 
-`drizzle-kit push` yangi columnlarni database'ga qo'shadi: `tenant_id`, `login`, `password_hash`, `password_changed_at`, `panel_access` va boshqalar.
-
-## Deploydan keyin
-
-1. Render'da **Manual Deploy → Deploy latest commit** qiling.
-2. `/login` ga kiring.
-3. Admin bilan kiring:
-
-```text
-login: admin
-parol: admin123
-```
-
-4. Sidebar pastidan **Parolni o'zgartirish** orqali admin parolni o'zgartiring.
-5. `/superadmin/tenants` sahifasida korxona qo'shing — HR link/parol chiqadi.
-6. HR shu link orqali kiradi va `/employees` sahifasidan xodim qo'shadi — xodim link/parol chiqadi.
+`drizzle-kit push` database'ga yangi columnlarni qo'shadi: `tenant_id`, `login`, `password_hash`, `password_changed_at`, `panel_access` va boshqalar.
 
 ## Tekshiruv natijalari
 

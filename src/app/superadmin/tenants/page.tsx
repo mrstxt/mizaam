@@ -43,6 +43,8 @@ export default function TenantsManagementPage() {
     contactName: "",
     contactPhone: "",
     contactEmail: "",
+    hrLogin: "",
+    hrPassword: "",
   });
 
   const fetchTenants = () => {
@@ -90,6 +92,8 @@ export default function TenantsManagementPage() {
       contactName: "",
       contactPhone: "",
       contactEmail: "",
+      hrLogin: "",
+      hrPassword: "",
     });
     fetchTenants();
   };
@@ -128,6 +132,16 @@ export default function TenantsManagementPage() {
     await fetch(`/api/superadmin/tenants/${id}`, { method: "DELETE" });
     fetchTenants();
   };
+
+  const handleDomainPrefixChange = (value: string) => {
+    const clean = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    setForm((current) => ({
+      ...current,
+      domainPrefix: clean,
+      hrLogin: current.hrLogin ? current.hrLogin : clean ? `${clean}.hr` : "",
+    }));
+  };
+
 
   if (loading) {
     return (
@@ -363,7 +377,7 @@ Parol: ${tenantAccess.password}`)} className="apple-btn text-xs shrink-0">Copy</
                   <label className="block text-xs font-semibold text-black/60 mb-1.5">Domain prefix (subdomain)</label>
                   <input
                     value={form.domainPrefix}
-                    onChange={(e) => setForm({ ...form, domainPrefix: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") })}
+                    onChange={(e) => handleDomainPrefixChange(e.target.value)}
                     required
                     placeholder="orient"
                     className="apple-input w-full font-mono"
@@ -418,6 +432,37 @@ Parol: ${tenantAccess.password}`)} className="apple-btn text-xs shrink-0">Copy</
                     onChange={(e) => setForm({ ...form, monthlyFee: Number(e.target.value) })}
                     className="apple-input w-full"
                   />
+                </div>
+              </div>
+
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+                <div>
+                  <p className="text-xs font-bold uppercase text-amber-700">HR panel kirish ma'lumotlari</p>
+                  <p className="text-[11px] text-amber-700/70 mt-1">Kompaniya qo'shilishi uchun HR login va parolni admin kiritishi shart. HR shu login bilan katta korxona paneliga kiradi.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-black/60 mb-1">HR login</label>
+                    <input
+                      value={form.hrLogin}
+                      onChange={(e) => setForm({ ...form, hrLogin: e.target.value.toLowerCase().replace(/\s/g, "") })}
+                      required
+                      placeholder="masalan: orient.hr"
+                      className="apple-input w-full text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-black/60 mb-1">HR parol</label>
+                    <input
+                      type="password"
+                      value={form.hrPassword}
+                      onChange={(e) => setForm({ ...form, hrPassword: e.target.value })}
+                      required
+                      minLength={8}
+                      placeholder="kamida 8 belgi"
+                      className="apple-input w-full text-xs"
+                    />
+                  </div>
                 </div>
               </div>
 

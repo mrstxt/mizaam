@@ -39,20 +39,29 @@ export const PANEL_DEFINITIONS: { key: PanelKey; label: string; description: str
 
 export const ALL_PANELS = PANEL_DEFINITIONS.map((panel) => panel.key);
 
+export const TENANT_PANELS: PanelKey[] = [
+  "dashboard",
+  "employees",
+  "attendance",
+  "tasks",
+  "reports",
+  "finance",
+  "salary",
+  "analytics",
+  "rules",
+  "crm",
+  "marketing",
+  "integrations",
+  "chat",
+  "support",
+  "notifications",
+];
+
 export const DEFAULT_PANELS_BY_ROLE: Record<UserRole, PanelKey[]> = {
-  admin: ALL_PANELS,
-  // DBdagi `manager` roli UI'da HR paneli sifatida ishlatiladi.
-  manager: [
-    "dashboard",
-    "employees",
-    "attendance",
-    "tasks",
-    "reports",
-    "analytics",
-    "chat",
-    "support",
-    "notifications",
-  ],
+  // Admin faqat platforma admin paneliga kiradi. Korxona/HR paneliga kirmaydi.
+  admin: ["superadmin"],
+  // DBdagi `manager` roli UI'da HR sifatida ishlatiladi va korxona katta panelini oladi.
+  manager: TENANT_PANELS,
   employee: ["dashboard", "attendance", "tasks", "reports", "chat", "support", "notifications"],
 };
 
@@ -87,16 +96,20 @@ export function parsePanelAccess(panelAccess: string | null | undefined, role: U
     .map((panel) => panel.trim())
     .filter((panel): panel is PanelKey => isPanelKey(panel));
 
+  if (role === "manager") {
+    const safePanels = parsed.filter((panel) => panel !== "superadmin");
+    return safePanels.length > 0 ? Array.from(new Set(safePanels)) : fallback;
+  }
+
   return parsed.length > 0 ? Array.from(new Set(parsed)) : fallback;
 }
 
-export function hasPanelAccess(role: UserRole, panels: PanelKey[] | undefined, panel: PanelKey): boolean {
-  if (role === "admin") return true;
+export function hasPanelAccess(_role: UserRole, panels: PanelKey[] | undefined, panel: PanelKey): boolean {
   return Boolean(panels?.includes(panel));
 }
 
 export function getDefaultLanding(role: UserRole, panels: PanelKey[] = DEFAULT_PANELS_BY_ROLE[role]): string {
-  if (role === "admin") return "/";
+  if (role === "admin") return "/superadmin";
   if (role === "manager") return panels.includes("employees") ? "/employees" : "/";
   if (panels.includes("tasks")) return "/tasks";
   if (panels.includes("reports")) return "/reports";

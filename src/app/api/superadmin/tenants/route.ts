@@ -1,19 +1,14 @@
 import { db } from "@/db";
 import { tenants, users } from "@/db/schema";
 import { authorize, jsonError } from "@/lib/auth";
-import { buildLoginUrl, generatePassword, slugifyLogin } from "@/lib/access";
-import { hashPassword } from "@/lib/password";
+import { buildLoginUrl, slugifyLogin } from "@/lib/access";
+import { hashPassword, isStrongEnoughPassword } from "@/lib/password";
 import { DEFAULT_PANELS_BY_ROLE, serializePanels } from "@/lib/permissions";
 import { and, desc, eq, sql } from "drizzle-orm";
 
-async function uniqueLogin(base: string) {
-  const safeBase = slugifyLogin(base) || "hr";
-  for (let index = 0; index < 100; index += 1) {
-    const candidate = index === 0 ? safeBase : `${safeBase}${index}`;
-    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.login, candidate)).limit(1);
-    if (!existing) return candidate;
-  }
-  return `${safeBase}${Date.now()}`;
+async function loginExists(login: string) {
+  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.login, login)).limit(1);
+  return Boolean(existing);
 }
 
 function splitName(fullName: string | null | undefined, fallback: string) {
@@ -52,21 +47,33 @@ export async function POST(request: Request) {
   const body = await request.json();
   const name = String(body.name || "").trim();
   const domainPrefix = slugifyLogin(String(body.domainPrefix || name).replace(/\./g, ""));
+  const hrLogin = String(body.hrLogin || "").trim().toLowerCase();
+  const hrPassword = String(body.hrPassword || "");
+
   if (!name || !domainPrefix) return jsonError("Korxona nomi va domain prefix majburiy", 400);
+  if (!hrLogin || !hrPassword) return jsonError("HR login va HR parol majburiy", 400);
+  if (!isStrongEnoughPassword(hrPassword)) return jsonError("HR parol kamida 8 ta belgidan iborat bo'lishi kerak", 400);
+  if (await loginExists(hrLogin)) return jsonError("Bu HR login band. Boshqa login kiriting", 409);
 
   const [tenant] = await db
     .insert(tenants)
     .values({
-      ...body,
       name,
       domainPrefix,
+      plan: body.plan || "pro",
+      status: body.status || "active",
+      hasFaceIdModule: Boolean(body.hasFaceIdModule),
+      hasCrmModule: body.hasCrmModule !== false,
       employeeCount: Math.max(Number(body.employeeCount || 0), 1),
+      maxEmployees: Number(body.maxEmployees || 50),
+      monthlyFee: Number(body.monthlyFee || 0),
+      contactName: body.contactName || null,
+      contactPhone: body.contactPhone || null,
+      contactEmail: body.contactEmail || null,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : new Date(Date.now() + 30 * 86400000),
     })
     .returning();
 
-  const hrLogin = await uniqueLogin(`${domainPrefix}.hr`);
-  const hrPassword = String(body.hrPassword || generatePassword(10));
   const hrName = splitName(body.contactName, name.split(" ")[0] || "Kompaniya");
 
   const [hrUser] = await db
