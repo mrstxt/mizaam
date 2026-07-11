@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "MIZAAM — Biznes Boshqaruv Tizimi",
@@ -15,12 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="uz">
       <body className="bg-[#f5f5f7] text-[#1d1d1f] antialiased">
-        <Sidebar />
-        <main className="pl-[240px] min-h-screen">
-          <div className="max-w-[1400px] mx-auto p-8 lg:p-10">
-            {children}
-          </div>
-        </main>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

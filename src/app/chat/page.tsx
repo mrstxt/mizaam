@@ -1,49 +1,98 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
 interface Message { id: number; senderId: number; receiverId: number; message: string; isRead: boolean; createdAt: string; senderFirstName: string | null; senderLastName: string | null; }
 interface Employee { id: number; firstName: string; lastName: string; }
+interface SessionUser { id: number; firstName: string; lastName: string; }
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedUser, setSelectedUser] = useState<Employee | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [text, setText] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
-  const currentUserId = 1;
 
-  useEffect(() => { fetch("/api/users?status=ishlaydi").then((r) => r.json()).then(setEmployees); }, []);
-  useEffect(() => { if (!selectedUser) return; setLoading(true); fetch(`/api/chat?userId=${currentUserId}&otherUserId=${selectedUser.id}`).then((r) => r.json()).then(setMessages).finally(() => setLoading(false)); }, [selectedUser]);
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/auth/me").then((r) => r.json()),
+      fetch("/api/users?status=ishlaydi").then((r) => r.json()),
+    ])
+      .then(([me, users]) => {
+        setCurrentUser(me.user);
+        setEmployees(Array.isArray(users) ? users.filter((user: Employee) => user.id !== me.user.id) : []);
+      })
+      .catch(() => setError("Chat ma'lumotlarini yuklab bo'lmadi"));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    setLoading(true);
+    fetch(`/api/chat?otherUserId=${selectedUser.id}`)
+      .then((r) => r.json())
+      .then((data) => setMessages(Array.isArray(data) ? data : []))
+      .catch(() => setError("Xabarlarni yuklab bo'lmadi"))
+      .finally(() => setLoading(false));
+  }, [selectedUser]);
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const refreshMessages = async () => {
+    if (!selectedUser) return;
+    const response = await fetch(`/api/chat?otherUserId=${selectedUser.id}`);
+    const data = await response.json();
+    setMessages(Array.isArray(data) ? data : []);
+  };
 
   const sendMessage = async () => {
     if (!text.trim() || !selectedUser) return;
-    await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ senderId: currentUserId, receiverId: selectedUser.id, message: text }) });
+    const message = text.trim();
     setText("");
-    setMessages(await (await fetch(`/api/chat?userId=${currentUserId}&otherUserId=${selectedUser.id}`)).json());
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receiverId: selectedUser.id, message }),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      setError(data.error || "Xabar yuborilmadi");
+      setText(message);
+      return;
+    }
+    await refreshMessages();
   };
 
   return (
     <div className="space-y-6 animate-fade-in h-[calc(100vh-160px)]">
       <div className="apple-page-header"><h1>Chat</h1><p>Xodimlar bilan ichki suhbat</p></div>
+      {error && <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">{error}</div>}
       <div className="flex gap-3 h-full">
-        <div className="w-60 apple-card overflow-hidden flex flex-col">
-          <div className="p-3 border-b border-black/5"><p className="text-[10px] font-semibold uppercase tracking-wider text-black/30">Xodimlar</p></div>
+        <div className="w-64 apple-card overflow-hidden flex flex-col">
+          <div className="p-3 border-b border-black/5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-black/30">Xodimlar</p>
+            {currentUser && <p className="text-xs text-black/50 mt-1">Siz: {currentUser.firstName} {currentUser.lastName}</p>}
+          </div>
           <div className="flex-1 overflow-y-auto">
             {employees.map((emp) => (
-              <button key={emp.id} onClick={() => setSelectedUser(emp)} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-black/[0.02] border-b border-black/[0.02] transition-colors ${selectedUser?.id === emp.id ? "bg-[#0071e3]/5 border-l-2 border-l-[#0071e3]" : ""}`}>
+              <button key={emp.id} onClick={() => setSelectedUser(emp)} className={`w-full text-left px-4 py-3 text-sm hover:bg-black/[0.02] border-b border-black/[0.02] transition-colors ${selectedUser?.id === emp.id ? "bg-[#0071e3]/5 border-l-2 border-l-[#0071e3]" : ""}`}>
                 <span className="font-medium text-black/80">{emp.firstName} {emp.lastName}</span>
               </button>
             ))}
+            {employees.length === 0 && <p className="text-center text-black/30 text-sm py-8">Xodim topilmadi</p>}
           </div>
         </div>
         <div className="flex-1 apple-card overflow-hidden flex flex-col">
           {selectedUser ? (
             <>
-              <div className="px-5 py-3 border-b border-black/5"><p className="font-medium text-sm">{selectedUser.firstName} {selectedUser.lastName}</p></div>
+              <div className="px-5 py-3 border-b border-black/5 flex items-center justify-between">
+                <p className="font-medium text-sm">{selectedUser.firstName} {selectedUser.lastName}</p>
+                {loading && <span className="text-xs text-black/30">Yuklanmoqda...</span>}
+              </div>
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
                 {messages.map((msg) => {
-                  const isMine = msg.senderId === currentUserId;
+                  const isMine = msg.senderId === currentUser?.id;
                   return (
                     <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[65%] rounded-2xl px-4 py-2.5 text-sm ${isMine ? "bg-[#0071e3] text-white" : "bg-black/[0.04] text-black/80"}`}>
@@ -53,6 +102,7 @@ export default function ChatPage() {
                     </div>
                   );
                 })}
+                {messages.length === 0 && <p className="text-center text-black/30 text-sm py-12">Hali xabar yo'q</p>}
                 <div ref={bottomRef} />
               </div>
               <div className="p-3 border-t border-black/5 flex gap-2">

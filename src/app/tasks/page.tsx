@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 interface Task {
   id: number; title: string; description: string | null; assignedTo: number;
@@ -8,10 +8,13 @@ interface Task {
   assigneeFirstName: string; assigneeLastName: string;
 }
 interface Employee { id: number; firstName: string; lastName: string; }
+interface SessionUser { id: number; role: "admin" | "manager" | "employee"; }
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [session, setSession] = useState<SessionUser | null>(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -23,29 +26,42 @@ export default function TasksPage() {
     fetch(`/api/tasks?${params}`).then((r) => r.json()).then(setTasks).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetch("/api/users?status=ishlaydi").then((r) => r.json()).then(setEmployees); }, []);
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/auth/me").then((r) => r.json()),
+      fetch("/api/users?status=ishlaydi").then((r) => r.json()),
+    ]).then(([me, users]) => {
+      setSession(me.user);
+      setEmployees(Array.isArray(users) ? users : []);
+    }).catch(() => setError("Ma'lumot yuklashda xatolik"));
+  }, []);
   useEffect(() => { fetchTasks(); }, [statusFilter]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, createdBy: 1 }) });
+    const response = await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!response.ok) { const data = await response.json(); setError(data.error || "Vazifa qo'shilmadi"); return; }
     setShowForm(false);
     setForm({ title: "", description: "", assignedTo: 0, priority: "orta", status: "kutilmoqda", deadline: "", bonus: 0 });
     fetchTasks();
   };
 
   const updateStatus = async (id: number, status: string) => {
-    await fetch(`/api/tasks/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, completedAt: status === "bajarildi" ? new Date().toISOString() : null }) });
+    const response = await fetch(`/api/tasks/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+    if (!response.ok) { const data = await response.json(); setError(data.error || "Vazifa yangilanmadi"); return; }
     fetchTasks();
   };
 
   const deleteTask = async (id: number) => {
     if (!confirm("O'chirishni tasdiqlaysizmi?")) return;
-    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    const response = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    if (!response.ok) { const data = await response.json(); setError(data.error || "Vazifa o'chirilmadi"); return; }
     fetchTasks();
   };
 
   if (loading) return <Loading />;
+
+  const canManageTasks = session?.role === "admin" || session?.role === "manager";
 
   const priorityStyles: Record<string, string> = { past: "bg-black/5 text-black/50", orta: "bg-blue-100 text-blue-700", yuqori: "bg-orange-100 text-orange-700", kritik: "bg-red-100 text-red-700" };
   const priorityLabels: Record<string, string> = { past: "Past", orta: "O'rta", yuqori: "Yuqori", kritik: "Kritik" };
@@ -55,9 +71,11 @@ export default function TasksPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between apple-page-header">
-        <div><h1>Vazifalar</h1><p>Xodimlar vazifalari boshqaruvi</p></div>
-        <button onClick={() => setShowForm(true)} className="apple-btn text-xs">+ Vazifa qo'shish</button>
+        <div><h1>Vazifalar</h1><p>{canManageTasks ? "Xodimlar vazifalari boshqaruvi" : "Sizga biriktirilgan vazifalar"}</p></div>
+        {canManageTasks && <button onClick={() => setShowForm(true)} className="apple-btn text-xs">+ Vazifa qo'shish</button>}
       </div>
+
+      {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       <div className="flex gap-3">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="apple-input w-44">
@@ -89,7 +107,7 @@ export default function TasksPage() {
               <div className="flex gap-2 shrink-0">
                 {task.status === "kutilmoqda" && <button onClick={() => updateStatus(task.id, "bajarilmoqda")} className="apple-btn text-[11px] px-3 py-1.5 bg-blue-500 hover:bg-blue-600 min-w-0">Boshlash</button>}
                 {task.status === "bajarilmoqda" && <button onClick={() => updateStatus(task.id, "bajarildi")} className="apple-btn text-[11px] px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 min-w-0">Bajarildi</button>}
-                <button onClick={() => deleteTask(task.id)} className="text-sm text-black/30 hover:text-red-500 transition-colors">🗑️</button>
+                {canManageTasks && <button onClick={() => deleteTask(task.id)} className="text-sm text-black/30 hover:text-red-500 transition-colors">🗑️</button>}
               </div>
             </div>
           </div>

@@ -1,71 +1,120 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { ROLE_LABELS, type PanelKey, type UserRole } from "@/lib/permissions";
 
-const tenantMenuItems = [
+type MenuItem = { href: string; label: string; icon: string; panel: PanelKey };
+type MenuSection = { section: string; items: MenuItem[] };
+
+interface SessionUser {
+  id: number;
+  firstName: string;
+  lastName: string;
+  login: string;
+  role: UserRole;
+  roleLabel: string;
+  panels: PanelKey[];
+}
+
+const tenantMenuItems: MenuSection[] = [
   {
     section: "ASOSIY",
     items: [
-      { href: "/", label: "Boshqaruv paneli", icon: "📊" },
-      { href: "/employees", label: "Xodimlar", icon: "👥" },
-      { href: "/attendance", label: "Davomat", icon: "📋" },
-      { href: "/tasks", label: "Vazifalar", icon: "✅" },
-      { href: "/reports", label: "Hisobotlar", icon: "📝" },
+      { href: "/", label: "Boshqaruv paneli", icon: "📊", panel: "dashboard" },
+      { href: "/employees", label: "Xodimlar", icon: "👥", panel: "employees" },
+      { href: "/attendance", label: "Davomat", icon: "📋", panel: "attendance" },
+      { href: "/tasks", label: "Vazifalar", icon: "✅", panel: "tasks" },
+      { href: "/reports", label: "Hisobotlar", icon: "📝", panel: "reports" },
     ],
   },
   {
     section: "MOLIYA",
     items: [
-      { href: "/finance", label: "Moliyaviy holat", icon: "💰" },
-      { href: "/salary", label: "Oylik tarqatish", icon: "💳" },
+      { href: "/finance", label: "Moliyaviy holat", icon: "💰", panel: "finance" },
+      { href: "/salary", label: "Oylik tarqatish", icon: "💳", panel: "salary" },
     ],
   },
   {
     section: "TAHLIL",
     items: [
-      { href: "/analytics", label: "Analitika", icon: "📈" },
-      { href: "/rules", label: "Qoidalar", icon: "📜" },
+      { href: "/analytics", label: "Analitika", icon: "📈", panel: "analytics" },
+      { href: "/rules", label: "Qoidalar", icon: "📜", panel: "rules" },
     ],
   },
   {
     section: "CRM",
     items: [
-      { href: "/crm", label: "Sotuv voronkasi", icon: "🎯" },
-      { href: "/marketing", label: "Marketing", icon: "📢" },
-      { href: "/integrations", label: "Integratsiyalar", icon: "🔗" },
+      { href: "/crm", label: "Sotuv voronkasi", icon: "🎯", panel: "crm" },
+      { href: "/marketing", label: "Marketing", icon: "📢", panel: "marketing" },
+      { href: "/integrations", label: "Integratsiyalar", icon: "🔗", panel: "integrations" },
     ],
   },
   {
     section: "ALOQA",
     items: [
-      { href: "/chat", label: "Chat", icon: "💬" },
-      { href: "/support", label: "Support", icon: "🛟" },
-      { href: "/notifications", label: "Bildirishnomalar", icon: "🔔" },
+      { href: "/chat", label: "Chat", icon: "💬", panel: "chat" },
+      { href: "/support", label: "Support", icon: "🛟", panel: "support" },
+      { href: "/notifications", label: "Bildirishnomalar", icon: "🔔", panel: "notifications" },
     ],
   },
 ];
 
-const superAdminMenuItems = [
+const superAdminMenuItems: MenuSection[] = [
   {
     section: "PLATFORMA MARKAZI",
     items: [
-      { href: "/superadmin", label: "Platforma paneli", icon: "⚡" },
-      { href: "/superadmin/tenants", label: "Korxonalar (Tenants)", icon: "🏢" },
-      { href: "/superadmin/billing", label: "SaaS To'lovlar & MRR", icon: "💳" },
-      { href: "/superadmin/updates", label: "Release & E'lonlar", icon: "🚀" },
-      { href: "/superadmin/support", label: "Global Support Core", icon: "🛟" },
+      { href: "/superadmin", label: "Platforma paneli", icon: "⚡", panel: "superadmin" },
+      { href: "/superadmin/tenants", label: "Korxonalar (Tenants)", icon: "🏢", panel: "superadmin" },
+      { href: "/superadmin/billing", label: "SaaS To'lovlar & MRR", icon: "💳", panel: "superadmin" },
+      { href: "/superadmin/updates", label: "Release & E'lonlar", icon: "🚀", panel: "superadmin" },
+      { href: "/superadmin/support", label: "Global Support Core", icon: "🛟", panel: "superadmin" },
     ],
   },
 ];
 
+function filterMenu(menu: MenuSection[], user: SessionUser | null) {
+  if (!user) return [];
+  return menu
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => user.role === "admin" || user.panels.includes(item.panel)),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const isSuperAdmin = pathname.startsWith("/superadmin");
 
-  const menuToRender = isSuperAdmin ? superAdminMenuItems : tenantMenuItems;
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/auth/me")
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((data) => {
+        if (mounted) setUser(data.user);
+      })
+      .catch(() => {
+        if (mounted) setUser(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [pathname]);
+
+  const menuToRender = useMemo(() => {
+    return filterMenu(isSuperAdmin ? superAdminMenuItems : tenantMenuItems, user);
+  }, [isSuperAdmin, user]);
+
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  };
 
   return (
     <aside
@@ -73,7 +122,6 @@ export default function Sidebar() {
         collapsed ? "w-[72px]" : "w-[240px]"
       }`}
     >
-      {/* Top Header & Mode Switcher */}
       <div className="p-4 border-b border-white/10 shrink-0">
         <div className="flex items-center justify-between mb-3">
           {!collapsed && (
@@ -82,12 +130,12 @@ export default function Sidebar() {
                 <span>MIZAAM</span>
                 {isSuperAdmin && (
                   <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30">
-                    SUPER
+                    ADMIN
                   </span>
                 )}
               </h1>
               <p className="text-[10px] text-white/40 tracking-wider uppercase">
-                {isSuperAdmin ? "Platform Engine" : "Biznes Boshqaruv"}
+                {isSuperAdmin ? "Platform Admin" : user?.role === "manager" ? "HR panel" : "Biznes Boshqaruv"}
               </p>
             </div>
           )}
@@ -100,42 +148,40 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Mode Switcher Buttons */}
         {!collapsed ? (
           <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
             <Link
               href="/"
               className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all ${
-                !isSuperAdmin
-                  ? "bg-[#0071e3] text-white shadow"
-                  : "text-white/60 hover:text-white"
+                !isSuperAdmin ? "bg-[#0071e3] text-white shadow" : "text-white/60 hover:text-white"
               }`}
             >
-              🏢 Korxona
+              🏢 Panel
             </Link>
-            <Link
-              href="/superadmin"
-              className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all flex items-center justify-center gap-1 ${
-                isSuperAdmin
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow font-semibold"
-                  : "text-amber-400/80 hover:text-amber-300"
-              }`}
-            >
-              <span>⚡ O&apos;zimiz</span>
-            </Link>
+            {(user?.role === "admin" || user?.panels.includes("superadmin")) && (
+              <Link
+                href="/superadmin"
+                className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all flex items-center justify-center gap-1 ${
+                  isSuperAdmin
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow font-semibold"
+                    : "text-amber-400/80 hover:text-amber-300"
+                }`}
+              >
+                <span>⚡ Admin</span>
+              </Link>
+            )}
           </div>
         ) : (
           <Link
             href={isSuperAdmin ? "/" : "/superadmin"}
             className="w-full py-2 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-            title={isSuperAdmin ? "Korxona paneliga o'tish" : "Superadmin paneliga o'tish"}
+            title={isSuperAdmin ? "Korxona paneliga o'tish" : "Admin paneliga o'tish"}
           >
             {isSuperAdmin ? "🏢" : "⚡"}
           </Link>
         )}
       </div>
 
-      {/* Navigation */}
       <nav className="p-3 space-y-5 flex-1 overflow-y-auto">
         {menuToRender.map((section) => (
           <div key={section.section}>
@@ -150,10 +196,7 @@ export default function Sidebar() {
             )}
             <ul className="space-y-0.5">
               {section.items.map((item) => {
-                const isActive =
-                  item.href === "/" || item.href === "/superadmin"
-                    ? pathname === item.href
-                    : pathname.startsWith(item.href);
+                const isActive = item.href === "/" || item.href === "/superadmin" ? pathname === item.href : pathname.startsWith(item.href);
                 return (
                   <li key={item.href}>
                     <Link
@@ -167,14 +210,8 @@ export default function Sidebar() {
                       }`}
                       title={collapsed ? item.label : undefined}
                     >
-                      <span className="text-lg shrink-0 w-6 text-center">
-                        {item.icon}
-                      </span>
-                      {!collapsed && (
-                        <span className="text-[13px] font-medium truncate">
-                          {item.label}
-                        </span>
-                      )}
+                      <span className="text-lg shrink-0 w-6 text-center">{item.icon}</span>
+                      {!collapsed && <span className="text-[13px] font-medium truncate">{item.label}</span>}
                     </Link>
                   </li>
                 );
@@ -184,19 +221,31 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom Info */}
       {!collapsed && (
-        <div className="px-5 py-4 border-t border-white/10 shrink-0 bg-black/20">
-          <div className="flex items-center justify-between text-[11px] text-white/40 mb-1">
+        <div className="px-4 py-4 border-t border-white/10 shrink-0 bg-black/20">
+          {user ? (
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white text-sm font-semibold">
+                {user.firstName[0]}
+                {user.lastName[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white truncate">{user.firstName} {user.lastName}</p>
+                <p className="text-[11px] text-white/40 truncate">{ROLE_LABELS[user.role]} • @{user.login}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="h-12 rounded-xl bg-white/5 animate-pulse mb-3" />
+          )}
+          <div className="flex items-center justify-between text-[11px] text-white/40 mb-3">
             <span>Holat:</span>
             <span className="text-emerald-400 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
-              SaaS Online
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Online
             </span>
           </div>
-          <p className="text-[10px] text-white/20 text-center tracking-wider mt-2">
-            {isSuperAdmin ? "MIZAAM CORE ENGINE" : "MIZAAM v1.0 MVP"}
-          </p>
+          <button onClick={logout} className="w-full rounded-xl bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-200 py-2 text-xs font-medium transition-colors">
+            Chiqish
+          </button>
         </div>
       )}
     </aside>

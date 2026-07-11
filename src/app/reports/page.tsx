@@ -1,41 +1,106 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 interface Report { id: number; userId: number; date: string; content: string; status: string; rejectionReason: string | null; firstName: string; lastName: string; }
+interface SessionUser { id: number; role: "admin" | "manager" | "employee"; }
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
+  const [session, setSession] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
+  const [content, setContent] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const fetchReports = async () => {
+    const params = new URLSearchParams();
+    if (statusFilter) params.set("status", statusFilter);
+    const response = await fetch(`/api/reports?${params}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Hisobotlarni yuklab bo'lmadi");
+    setReports(data);
+  };
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    fetch(`/api/reports?${params}`).then((r) => r.json()).then(setReports).finally(() => setLoading(false));
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => setSession(data.user))
+      .catch(() => setError("Sessiya topilmadi"));
+  }, []);
+
+  useEffect(() => {
+    fetchReports().catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, [statusFilter]);
 
+  const submitReport = async (event: FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+    const response = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, content }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.error || "Hisobot yuborilmadi");
+      return;
+    }
+    setContent("");
+    setSuccess("Hisobot yuborildi");
+    await fetchReports();
+  };
+
   const handleAction = async (id: number, status: string, rejectionReason = "") => {
-    await fetch("/api/reports", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status, rejectionReason }) });
-    const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    setReports(await (await fetch(`/api/reports?${params}`)).json());
+    const response = await fetch("/api/reports", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status, rejectionReason }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.error || "Hisobot yangilanmadi");
+      return;
+    }
+    await fetchReports();
   };
 
   if (loading) return <Loading />;
 
+  const canApprove = session?.role === "admin" || session?.role === "manager";
   const pending = reports.filter((r) => r.status === "kutilmoqda").length;
   const approved = reports.filter((r) => r.status === "tasdiqlangan").length;
   const rejected = reports.filter((r) => r.status === "rad_etilgan").length;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="apple-page-header"><h1>Kunlik hisobotlar</h1><p>Xodimlardan kelgan hisobotlar</p></div>
+      <div className="apple-page-header">
+        <h1>Kunlik hisobotlar</h1>
+        <p>{canApprove ? "Xodimlardan kelgan hisobotlarni tasdiqlash" : "Kunlik ishlaringiz bo'yicha hisobot yuboring"}</p>
+      </div>
+
+      {(error || success) && <div className={`rounded-2xl px-4 py-3 text-sm border ${error ? "bg-red-50 border-red-200 text-red-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>{error || success}</div>}
+
+      {!canApprove && (
+        <form onSubmit={submitReport} className="apple-card p-5 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div><h2 className="font-semibold">Yangi hisobot</h2><p className="text-sm text-black/40">Bugungi bajarilgan ishlaringizni yozing</p></div>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="apple-input" />
+          </div>
+          <textarea value={content} onChange={(e) => setContent(e.target.value)} required rows={4} className="apple-input w-full" placeholder="Bugun nimalar bajarildi? Muammo yoki takliflar..." />
+          <div className="flex justify-end"><button className="apple-btn">Hisobot yuborish</button></div>
+        </form>
+      )}
+
       <div className="grid grid-cols-3 gap-3">
         <div className="apple-card p-4"><p className="apple-stat-label text-amber-600">Kutilmoqda</p><p className="apple-stat-value text-amber-600">{pending}</p></div>
         <div className="apple-card p-4"><p className="apple-stat-label text-emerald-600">Tasdiqlangan</p><p className="apple-stat-value text-emerald-600">{approved}</p></div>
         <div className="apple-card p-4"><p className="apple-stat-label text-red-600">Rad etilgan</p><p className="apple-stat-value text-red-600">{rejected}</p></div>
       </div>
+
       <div className="flex gap-3">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="apple-input w-44">
           <option value="">Barcha</option><option value="kutilmoqda">Kutilmoqda</option><option value="tasdiqlangan">Tasdiqlangan</option><option value="rad_etilgan">Rad etilgan</option>
@@ -53,10 +118,10 @@ export default function ReportsPage() {
                     {r.status === "tasdiqlangan" ? "Tasdiqlangan" : r.status === "rad_etilgan" ? "Rad etilgan" : "Kutilmoqda"}
                   </span>
                 </div>
-                <p className="text-sm text-black/60 mt-2">{r.content}</p>
+                <p className="text-sm text-black/60 mt-2 whitespace-pre-wrap">{r.content}</p>
                 {r.rejectionReason && <p className="text-xs text-red-500 mt-1">Sabab: {r.rejectionReason}</p>}
               </div>
-              {r.status === "kutilmoqda" && (
+              {canApprove && r.status === "kutilmoqda" && (
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => handleAction(r.id, "tasdiqlangan")} className="apple-btn text-[11px] px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 min-w-0">✅ Tasdiqlash</button>
                   <button onClick={() => { const reason = prompt("Rad etish sababi:"); if (reason) handleAction(r.id, "rad_etilgan", reason); }} className="apple-btn text-[11px] px-3 py-1.5 bg-red-500 hover:bg-red-600 min-w-0">❌ Rad etish</button>

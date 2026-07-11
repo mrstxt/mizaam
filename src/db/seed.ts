@@ -23,6 +23,51 @@ import {
   platformMetrics,
 } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { hashPassword } from "@/lib/password";
+import { DEFAULT_PANELS_BY_ROLE, serializePanels, type UserRole } from "@/lib/permissions";
+
+const defaultCredentials: Record<string, { login: string; password: string; role: UserRole }> = {
+  "alisher@mizaam.uz": { login: "admin", password: "Admin12345!", role: "admin" },
+  "dilshod@mizaam.uz": { login: "hr", password: "Hr12345!", role: "manager" },
+  "gulnora@mizaam.uz": { login: "xodim", password: "Xodim12345!", role: "employee" },
+  "botir@mizaam.uz": { login: "botir", password: "Xodim12345!", role: "employee" },
+  "madina@mizaam.uz": { login: "madina.hr", password: "Hr12345!", role: "manager" },
+  "javlon@mizaam.uz": { login: "javlon", password: "Xodim12345!", role: "employee" },
+  "zarina@mizaam.uz": { login: "zarina", password: "Xodim12345!", role: "employee" },
+};
+
+async function authFields(email: string) {
+  const account = defaultCredentials[email];
+  if (!account) return {};
+  return {
+    login: account.login,
+    passwordHash: await hashPassword(account.password),
+    mustChangePassword: false,
+    panelAccess: serializePanels(DEFAULT_PANELS_BY_ROLE[account.role]),
+  };
+}
+
+async function ensureDefaultAuthAccounts() {
+  for (const [email, account] of Object.entries(defaultCredentials)) {
+    const [existing] = await db
+      .select({ id: users.id, login: users.login, passwordHash: users.passwordHash, panelAccess: users.panelAccess, role: users.role })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!existing) continue;
+
+    const updates: Partial<typeof users.$inferInsert> = {};
+    if (!existing.login) updates.login = account.login;
+    if (!existing.passwordHash) updates.passwordHash = await hashPassword(account.password);
+    if (!existing.panelAccess) updates.panelAccess = serializePanels(DEFAULT_PANELS_BY_ROLE[account.role]);
+    if (existing.role !== account.role) updates.role = account.role;
+
+    if (Object.keys(updates).length > 0) {
+      await db.update(users).set(updates).where(eq(users.id, existing.id));
+    }
+  }
+}
 
 export async function seed() {
   // Check if superadmin already seeded
@@ -182,7 +227,10 @@ export async function seed() {
 
   // Check if users already seeded
   const existing = await db.select({ count: sql<number>`count(*)` }).from(users);
-  if (Number(existing[0].count) > 0) return;
+  if (Number(existing[0].count) > 0) {
+    await ensureDefaultAuthAccounts();
+    return;
+  }
 
   // Lost reasons
   await db.insert(lostReasons).values([
@@ -214,6 +262,7 @@ export async function seed() {
         lastName: "Karimov",
         positionId: pos1.id,
         email: "alisher@mizaam.uz",
+        ...(await authFields("alisher@mizaam.uz")),
         phone: "+998901234567",
         address: "Toshkent, Yunusobod",
         education: "Toshkent Davlat Universiteti",
@@ -228,6 +277,7 @@ export async function seed() {
         lastName: "Rahimov",
         positionId: pos2.id,
         email: "dilshod@mizaam.uz",
+        ...(await authFields("dilshod@mizaam.uz")),
         phone: "+998901234568",
         address: "Toshkent, Chilonzor",
         education: "Toshkent Moliya Instituti",
@@ -242,6 +292,7 @@ export async function seed() {
         lastName: "Azizova",
         positionId: pos3.id,
         email: "gulnora@mizaam.uz",
+        ...(await authFields("gulnora@mizaam.uz")),
         phone: "+998901234569",
         address: "Toshkent, Mirzo Ulug'bek",
         education: "Westminster Universiteti",
@@ -256,6 +307,7 @@ export async function seed() {
         lastName: "Nurmatov",
         positionId: pos3.id,
         email: "botir@mizaam.uz",
+        ...(await authFields("botir@mizaam.uz")),
         phone: "+998901234570",
         address: "Toshkent, Sergeli",
         education: "Toshkent Axborot Texnologiyalari",
@@ -270,6 +322,7 @@ export async function seed() {
         lastName: "Saidova",
         positionId: pos4.id,
         email: "madina@mizaam.uz",
+        ...(await authFields("madina@mizaam.uz")),
         phone: "+998901234571",
         address: "Toshkent, Yakkasaroy",
         education: "Toshkent Iqtisodiyot Universiteti",
@@ -284,6 +337,7 @@ export async function seed() {
         lastName: "Tursunov",
         positionId: pos5.id,
         email: "javlon@mizaam.uz",
+        ...(await authFields("javlon@mizaam.uz")),
         phone: "+998901234572",
         address: "Toshkent, Olmazor",
         education: "Toshkent Davlat Universiteti",
@@ -298,6 +352,7 @@ export async function seed() {
         lastName: "Xolmurodova",
         positionId: pos3.id,
         email: "zarina@mizaam.uz",
+        ...(await authFields("zarina@mizaam.uz")),
         phone: "+998901234573",
         address: "Toshkent, Shayxontohur",
         education: "MDIS Toshkent",
