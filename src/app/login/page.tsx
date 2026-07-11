@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [login, setLogin] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -66,14 +66,14 @@ export default function LoginPage() {
               Admin, HR va xodimlar uchun alohida kirish tizimi
             </h1>
             <p className="text-white/60 mt-5 max-w-xl text-base leading-7">
-              Har bir xodimga rol va panel ruxsatlari beriladi. Admin HR login-parolini yaratadi, HR xodimlarni boshqaradi, xodim esa o'z vazifa va hisobot panelidan foydalanadi.
+              Har bir xodimga rol va panel ruxsatlari beriladi. Admin kompaniya va HR kirishlarini yaratadi, HR xodimlarni boshqaradi, xodim esa o'z vazifa va hisobot panelidan foydalanadi.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-3 mt-10">
             {[
-              ["Admin", "Barcha panellar"],
-              ["HR", "Xodim va davomat"],
+              ["Admin", "Faqat admin panel"],
+              ["HR", "Katta korxona paneli"],
               ["Xodim", "Vazifa va hisobot"],
             ].map(([title, subtitle]) => (
               <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.08] p-4">
@@ -105,7 +105,7 @@ export default function LoginPage() {
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 className="apple-input w-full h-12"
-                placeholder="admin / hr / xodim"
+                placeholder="Loginni kiriting"
                 autoComplete="username"
                 required
               />
@@ -137,12 +137,6 @@ export default function LoginPage() {
               {loading ? "Tekshirilmoqda..." : "Kirish"}
             </button>
 
-            <div className="rounded-2xl bg-black/[0.03] border border-black/[0.06] p-4 text-xs text-black/50 leading-6">
-              <p className="font-semibold text-black/70 mb-1">Demo seed loginlari:</p>
-              <p>Admin: <b>admin</b> / <b>admin123</b></p>
-              <p>HR: <b>hr</b> / <b>Hr12345!</b></p>
-              <p>Xodim: <b>xodim</b> / <b>Xodim12345!</b></p>
-            </div>
           </form>
         </div>
       </section>

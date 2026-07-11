@@ -27,13 +27,9 @@ import { hashPassword } from "@/lib/password";
 import { DEFAULT_PANELS_BY_ROLE, serializePanels, type UserRole } from "@/lib/permissions";
 
 const defaultCredentials: Record<string, { login: string; password: string; role: UserRole }> = {
+  // Seed faqat platform adminni login/parol bilan tayyorlaydi.
+  // HR va xodim loginlari admin/HR panel orqali yaratiladi.
   "alisher@mizaam.uz": { login: "admin", password: "admin123", role: "admin" },
-  "dilshod@mizaam.uz": { login: "hr", password: "Hr12345!", role: "manager" },
-  "gulnora@mizaam.uz": { login: "xodim", password: "Xodim12345!", role: "employee" },
-  "botir@mizaam.uz": { login: "botir", password: "Xodim12345!", role: "employee" },
-  "madina@mizaam.uz": { login: "madina.hr", password: "Hr12345!", role: "manager" },
-  "javlon@mizaam.uz": { login: "javlon", password: "Xodim12345!", role: "employee" },
-  "zarina@mizaam.uz": { login: "zarina", password: "Xodim12345!", role: "employee" },
 };
 
 async function authFields(email: string) {

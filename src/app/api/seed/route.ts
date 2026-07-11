@@ -13,11 +13,6 @@ export async function GET(request: Request) {
     return Response.json({
       ok: true,
       message: "Seed completed",
-      demoLogins: {
-        admin: "admin / Admin12345!",
-        hr: "hr / Hr12345!",
-        employee: "xodim / Xodim12345!",
-      },
     });
   } catch (err) {
     return Response.json({ ok: false, error: String(err) }, { status: 500 });
