@@ -4,17 +4,21 @@ export interface AccessDetails {
   loginUrl: string;
 }
 
-export function buildLoginUrl(request: Request, login?: string | null) {
-  const url = new URL("/login", request.url);
+export const DEFAULT_PUBLIC_APP_URL = "https://mizaam.onrender.com";
+
+function getPublicBaseUrl() {
+  return DEFAULT_PUBLIC_APP_URL;
+}
+
+export function buildLoginUrl(_request: Request, login?: string | null) {
+  const url = new URL("/login", getPublicBaseUrl());
   if (login) url.searchParams.set("login", login);
   return url.toString();
 }
 
-export function buildTenantLoginUrl(request: Request, tenantLogin: string, login?: string | null) {
+export function buildTenantLoginUrl(_request: Request, tenantLogin: string) {
   const safeTenantLogin = slugifyLogin(tenantLogin);
-  const url = new URL(`/${safeTenantLogin}/login`, request.url);
-  if (login) url.searchParams.set("login", login);
-  return url.toString();
+  return `${getPublicBaseUrl()}/${safeTenantLogin}/login`;
 }
 
 export function generatePassword(length = 10) {

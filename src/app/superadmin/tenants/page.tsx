@@ -221,7 +221,7 @@ Parol: ${tenantAccess.password}`)} className="apple-btn text-xs shrink-0">Copy</
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <h3 className="text-lg font-bold text-black/90">{t.name}</h3>
-                  <p className="text-xs font-mono text-black/50">{t.domainPrefix}.mizaam.uz</p>
+                  <p className="text-xs font-mono text-black/50">https://mizaam.onrender.com/{t.domainPrefix}/login</p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span
@@ -373,7 +373,7 @@ Parol: ${tenantAccess.password}`)} className="apple-btn text-xs shrink-0">Copy</
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-black/60 mb-1.5">Domain prefix (subdomain)</label>
+                  <label className="block text-xs font-semibold text-black/60 mb-1.5">Kompaniya login</label>
                   <input
                     value={form.domainPrefix}
                     onChange={(e) => handleDomainPrefixChange(e.target.value)}

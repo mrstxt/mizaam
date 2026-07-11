@@ -220,7 +220,7 @@ export default function SuperAdminDashboard() {
               <thead>
                 <tr>
                   <th>Korxona nomi</th>
-                  <th>Subdomain</th>
+                  <th>Panel linki</th>
                   <th>Tarif (Plan)</th>
                   <th>Modullari</th>
                   <th>Xodimlar</th>
@@ -231,7 +231,7 @@ export default function SuperAdminDashboard() {
                 {data.allTenants.slice(0, 5).map((tenant) => (
                   <tr key={tenant.id}>
                     <td className="font-bold text-black/90">{tenant.name}</td>
-                    <td className="font-mono text-xs text-black/50">{tenant.domainPrefix}.mizaam.uz</td>
+                    <td className="font-mono text-xs text-black/50">https://mizaam.onrender.com/{tenant.domainPrefix}/login</td>
                     <td>
                       <span className={`apple-badge capitalize ${planColors[tenant.plan] || "bg-slate-100"}`}>
                         {tenant.plan}

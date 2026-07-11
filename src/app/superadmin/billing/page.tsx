@@ -151,7 +151,7 @@ export default function SuperAdminBillingPage() {
                 <td className="font-bold text-black/90">
                   {pay.tenantName}
                   <span className="block text-[11px] font-normal font-mono text-black/40">
-                    {pay.tenantDomain}.mizaam.uz
+                    https://mizaam.onrender.com/{pay.tenantDomain}/login
                   </span>
                 </td>
                 <td className="text-black/70 font-medium">{pay.plan}</td>
