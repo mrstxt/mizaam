@@ -27,7 +27,7 @@ import { hashPassword } from "@/lib/password";
 import { DEFAULT_PANELS_BY_ROLE, serializePanels, type UserRole } from "@/lib/permissions";
 
 const defaultCredentials: Record<string, { login: string; password: string; role: UserRole }> = {
-  "alisher@mizaam.uz": { login: "admin", password: "Admin12345!", role: "admin" },
+  "alisher@mizaam.uz": { login: "admin", password: "admin123", role: "admin" },
   "dilshod@mizaam.uz": { login: "hr", password: "Hr12345!", role: "manager" },
   "gulnora@mizaam.uz": { login: "xodim", password: "Xodim12345!", role: "employee" },
   "botir@mizaam.uz": { login: "botir", password: "Xodim12345!", role: "employee" },

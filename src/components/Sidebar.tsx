@@ -89,6 +89,11 @@ export default function Sidebar() {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const isSuperAdmin = pathname.startsWith("/superadmin");
 
   useEffect(() => {
@@ -116,7 +121,36 @@ export default function Sidebar() {
     router.refresh();
   };
 
+  const changePassword = async () => {
+    setPasswordError("");
+    setPasswordMessage("");
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("Yangi parol kamida 8 ta belgidan iborat bo'lsin");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("Yangi parol takrori mos emas");
+      return;
+    }
+
+    setChangingPassword(true);
+    const response = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPassword: passwordForm.oldPassword, newPassword: passwordForm.newPassword }),
+    });
+    const data = await response.json();
+    setChangingPassword(false);
+    if (!response.ok) {
+      setPasswordError(data.error || "Parol o'zgartirilmadi");
+      return;
+    }
+    setPasswordMessage("Parol muvaffaqiyatli o'zgartirildi");
+    setPasswordForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  };
+
   return (
+    <>
     <aside
       className={`fixed top-0 left-0 h-full z-50 overflow-y-auto apple-sidebar transition-all duration-200 flex flex-col ${
         collapsed ? "w-[72px]" : "w-[240px]"
@@ -243,11 +277,54 @@ export default function Sidebar() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Online
             </span>
           </div>
+          <button onClick={() => { setShowPasswordModal(true); setPasswordError(""); setPasswordMessage(""); }} className="w-full rounded-xl bg-white/10 hover:bg-white/15 text-white/70 hover:text-white py-2 text-xs font-medium transition-colors mb-2">
+            Parolni o'zgartirish
+          </button>
           <button onClick={logout} className="w-full rounded-xl bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-200 py-2 text-xs font-medium transition-colors">
             Chiqish
           </button>
         </div>
       )}
     </aside>
+
+    {showPasswordModal && (
+      <div className="fixed inset-0 z-[80] bg-black/30 apple-modal-overlay flex items-center justify-center p-4" onClick={() => setShowPasswordModal(false)}>
+        <div className="apple-modal w-full max-w-md p-6" onClick={(event) => event.stopPropagation()}>
+          <div className="flex items-start justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-xl font-bold text-black/90">Parolni o'zgartirish</h2>
+              <p className="text-sm text-black/45 mt-1">Joriy parolni kiriting va yangi parol belgilang.</p>
+            </div>
+            <button onClick={() => setShowPasswordModal(false)} className="apple-btn apple-btn-secondary px-4">✕</button>
+          </div>
+
+          {(passwordError || passwordMessage) && (
+            <div className={`rounded-2xl px-4 py-3 text-sm mb-4 border ${passwordError ? "bg-red-50 border-red-200 text-red-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+              {passwordError || passwordMessage}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <label className="block">
+              <span className="block text-xs font-semibold text-black/50 mb-1.5">Joriy parol</span>
+              <input type="password" value={passwordForm.oldPassword} onChange={(event) => setPasswordForm({ ...passwordForm, oldPassword: event.target.value })} className="apple-input w-full" />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-semibold text-black/50 mb-1.5">Yangi parol</span>
+              <input type="password" value={passwordForm.newPassword} onChange={(event) => setPasswordForm({ ...passwordForm, newPassword: event.target.value })} className="apple-input w-full" />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-semibold text-black/50 mb-1.5">Yangi parol takrori</span>
+              <input type="password" value={passwordForm.confirmPassword} onChange={(event) => setPasswordForm({ ...passwordForm, confirmPassword: event.target.value })} className="apple-input w-full" />
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowPasswordModal(false)} className="apple-btn apple-btn-secondary">Bekor qilish</button>
+              <button onClick={changePassword} disabled={changingPassword} className="apple-btn disabled:opacity-60">{changingPassword ? "Saqlanmoqda..." : "Saqlash"}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

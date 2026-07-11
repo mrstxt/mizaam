@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   await db
     .update(users)
-    .set({ passwordHash: await hashPassword(newPassword), mustChangePassword: false })
+    .set({ passwordHash: await hashPassword(newPassword), mustChangePassword: false, passwordChangedAt: new Date() })
     .where(eq(users.id, auth.user.id));
 
   return Response.json({ ok: true });

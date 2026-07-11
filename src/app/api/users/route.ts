@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { activityLogs, positions, users } from "@/db/schema";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { authorize, canManageRole, jsonError } from "@/lib/auth";
+import { buildLoginUrl, generatePassword } from "@/lib/access";
 import { hashPassword, isStrongEnoughPassword } from "@/lib/password";
 import {
   DEFAULT_PANELS_BY_ROLE,
@@ -63,11 +64,13 @@ async function buildUserPayload(body: Record<string, unknown>, actorRole: UserRo
 
   const firstName = String(body.firstName ?? "").trim();
   const lastName = String(body.lastName ?? "").trim();
-  const login = normalizeLogin(body.login);
-  const password = String(body.password ?? "");
+  let login = normalizeLogin(body.login);
+  if (!editingId && !login) login = normalizeLogin(`${firstName}.${lastName}`);
+  const providedPassword = String(body.password ?? "");
+  const password = !editingId && !providedPassword ? generatePassword(10) : providedPassword;
 
   if (!firstName || !lastName) return { error: jsonError("Ism va familiya majburiy", 400) } as const;
-  if (!editingId && !login) return { error: jsonError("Login majburiy", 400) } as const;
+  if (!editingId && !login) return { error: jsonError("Login yaratish uchun ism/familiya majburiy", 400) } as const;
   if (login && (await loginExists(login, editingId))) return { error: jsonError("Bu login band", 409) } as const;
   if (!editingId && !isStrongEnoughPassword(password)) {
     return { error: jsonError("Parol kamida 8 ta belgidan iborat bo'lishi kerak", 400) } as const;
@@ -79,7 +82,10 @@ async function buildUserPayload(body: Record<string, unknown>, actorRole: UserRo
   const positionId = Number(body.positionId || 0);
   const status = isStatus(body.status) ? body.status : "ishlaydi";
 
+  const tenantId = actorRole === "manager" ? (body.actorTenantId as number | null | undefined) : Number(body.tenantId || 0) || null;
+
   const values: typeof users.$inferInsert = {
+    tenantId,
     firstName,
     lastName,
     positionId: positionId > 0 ? positionId : null,
@@ -99,7 +105,7 @@ async function buildUserPayload(body: Record<string, unknown>, actorRole: UserRo
   if (password) values.passwordHash = await hashPassword(password);
   if (normalizeOptionalText(body.telegramPassword)) values.telegramPassword = normalizeOptionalText(body.telegramPassword);
 
-  return { values } as const;
+  return { values, plainPassword: !editingId ? password : undefined } as const;
 }
 
 export async function GET(request: Request) {
@@ -118,14 +124,20 @@ export async function GET(request: Request) {
     conditions.push(sql`(${users.firstName} || ' ' || ${users.lastName} || ' ' || coalesce(${users.login}, '') || ' ' || coalesce(${users.phone}, '')) ilike ${`%${search}%`}`);
   }
 
+  if (auth.user.role === "manager" && auth.user.tenantId) {
+    conditions.push(eq(users.tenantId, auth.user.tenantId));
+  }
+
   // Oddiy xodimlar faqat aktiv xodimlar ro'yxatini chat uchun ko'radi.
   if (auth.user.role === "employee") {
     conditions.push(eq(users.status, "ishlaydi"));
+    if (auth.user.tenantId) conditions.push(eq(users.tenantId, auth.user.tenantId));
   }
 
   const result = await db
     .select({
       id: users.id,
+      tenantId: users.tenantId,
       firstName: users.firstName,
       lastName: users.lastName,
       email: auth.user.role === "employee" ? sql<string | null>`null` : users.email,
@@ -162,12 +174,14 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   const body = await request.json();
+  body.actorTenantId = auth.user.tenantId ?? null;
   const built = await buildUserPayload(body, auth.user.role);
   if (built.error) return built.error;
 
   try {
     const [user] = await db.insert(users).values(built.values).returning({
       id: users.id,
+      tenantId: users.tenantId,
       firstName: users.firstName,
       lastName: users.lastName,
       login: users.login,
@@ -181,7 +195,18 @@ export async function POST(request: Request) {
       details: `${user.firstName} ${user.lastName} (${user.login}) yaratildi`,
     });
 
-    return Response.json({ ...user, panels: parsePanelAccess(user.panelAccess, user.role as UserRole) }, { status: 201 });
+    return Response.json(
+      {
+        ...user,
+        panels: parsePanelAccess(user.panelAccess, user.role as UserRole),
+        access: {
+          login: user.login,
+          password: built.plainPassword,
+          loginUrl: buildLoginUrl(request, user.login),
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Create user error", error);
     return jsonError("Xodim yaratishda xatolik. Login yoki email band bo'lishi mumkin", 500);

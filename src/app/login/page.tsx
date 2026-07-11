@@ -1,15 +1,24 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
   const [login, setLogin] = useState("admin");
-  const [password, setPassword] = useState("Admin12345!");
+  const [password, setPassword] = useState("admin123");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const loginParam = params.get("login");
+    if (loginParam) {
+      setLogin(loginParam);
+      setPassword("");
+    }
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -130,7 +139,7 @@ export default function LoginPage() {
 
             <div className="rounded-2xl bg-black/[0.03] border border-black/[0.06] p-4 text-xs text-black/50 leading-6">
               <p className="font-semibold text-black/70 mb-1">Demo seed loginlari:</p>
-              <p>Admin: <b>admin</b> / <b>Admin12345!</b></p>
+              <p>Admin: <b>admin</b> / <b>admin123</b></p>
               <p>HR: <b>hr</b> / <b>Hr12345!</b></p>
               <p>Xodim: <b>xodim</b> / <b>Xodim12345!</b></p>
             </div>

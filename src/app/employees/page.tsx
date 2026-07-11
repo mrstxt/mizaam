@@ -32,6 +32,7 @@ interface Employee {
 
 interface Position { id: number; name: string; baseSalary: number; salaryType: string; }
 interface SessionUser { id: number; role: UserRole; panels: PanelKey[]; }
+interface AccessDetails { login: string; password: string; loginUrl: string; role?: string; }
 
 type EmployeeForm = {
   firstName: string;
@@ -96,6 +97,7 @@ export default function EmployeesPage() {
   const [form, setForm] = useState<EmployeeForm>(emptyForm());
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [accessInfo, setAccessInfo] = useState<AccessDetails | null>(null);
 
   const canCreatePrivileged = session?.role === "admin";
   const roleOptions: UserRole[] = canCreatePrivileged ? ["admin", "manager", "employee"] : ["employee"];
@@ -147,6 +149,7 @@ export default function EmployeesPage() {
     setEditing(null);
     setError("");
     setSuccess("");
+    setAccessInfo(null);
     setForm(emptyForm(canCreatePrivileged ? "employee" : "employee"));
     setShowForm(true);
   };
@@ -155,6 +158,7 @@ export default function EmployeesPage() {
     setEditing(emp);
     setError("");
     setSuccess("");
+    setAccessInfo(null);
     setForm({
       firstName: emp.firstName,
       lastName: emp.lastName,
@@ -222,7 +226,8 @@ export default function EmployeesPage() {
       setShowForm(false);
       setEditing(null);
       setForm(emptyForm());
-      setSuccess(editing ? "Xodim ma'lumotlari yangilandi" : `Xodim yaratildi. Login: ${payload.login}`);
+      setAccessInfo(!editing && data.access ? data.access : null);
+      setSuccess(editing ? "Xodim ma'lumotlari yangilandi" : `Xodim yaratildi. Login: ${data.access?.login || payload.login || "avtomatik"}`);
       await fetchEmployees();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Saqlashda xatolik");
@@ -274,6 +279,25 @@ export default function EmployeesPage() {
       {(error || success) && (
         <div className={`rounded-2xl px-4 py-3 text-sm border ${error ? "bg-red-50 border-red-200 text-red-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
           {error || success}
+        </div>
+      )}
+
+      {accessInfo && (
+        <div className="apple-card p-5 border border-emerald-200 bg-emerald-50/70">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-emerald-800">Kirish ma'lumotlari tayyor</p>
+              <p className="text-xs text-emerald-700/80 mt-1">Shu link va parolni foydalanuvchiga yuboring. Parol faqat hozir ko'rinadi.</p>
+              <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Login</p><p className="font-mono font-semibold text-black/80">{accessInfo.login}</p></div>
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Parol</p><p className="font-mono font-semibold text-black/80">{accessInfo.password}</p></div>
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Link</p><a className="font-mono font-semibold text-[#0071e3] break-all" href={accessInfo.loginUrl} target="_blank">{accessInfo.loginUrl}</a></div>
+              </div>
+            </div>
+            <button onClick={() => navigator.clipboard.writeText(`Link: ${accessInfo.loginUrl}
+Login: ${accessInfo.login}
+Parol: ${accessInfo.password}`)} className="apple-btn text-xs shrink-0">Copy</button>
+          </div>
         </div>
       )}
 
@@ -401,8 +425,8 @@ export default function EmployeesPage() {
                 <section className="space-y-4">
                   <h3 className="text-sm font-semibold text-black/70">Kirish va ish ma'lumotlari</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <Field label="Login"><input value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value.toLowerCase().replace(/\s/g, "") })} required={!editing} className="apple-input w-full font-mono" placeholder="masalan: hr" /></Field>
-                    <Field label={editing ? "Yangi parol (ixtiyoriy)" : "Parol"}><input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editing} minLength={8} className="apple-input w-full" placeholder="Kamida 8 belgi" /></Field>
+                    <Field label="Login"><input value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value.toLowerCase().replace(/\s/g, "") })} className="apple-input w-full font-mono" placeholder="bo'sh bo'lsa avtomatik" /></Field>
+                    <Field label={editing ? "Yangi parol (ixtiyoriy)" : "Parol (bo'sh bo'lsa avtomatik)"}><input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength={8} className="apple-input w-full" placeholder="Kamida 8 belgi" /></Field>
                     <Field label="Lavozim">
                       <select value={form.positionId} onChange={(e) => setForm({ ...form, positionId: Number(e.target.value) })} className="apple-input w-full" required>
                         <option value={0}>Tanlang...</option>

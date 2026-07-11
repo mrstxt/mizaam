@@ -17,6 +17,7 @@ export async function getFreshSessionUser(request: Request) {
   const [user] = await db
     .select({
       id: users.id,
+      tenantId: users.tenantId,
       login: users.login,
       firstName: users.firstName,
       lastName: users.lastName,
@@ -32,6 +33,7 @@ export async function getFreshSessionUser(request: Request) {
 
   return {
     ...session,
+    tenantId: user.tenantId ?? null,
     login: user.login || session.login,
     firstName: user.firstName,
     lastName: user.lastName,

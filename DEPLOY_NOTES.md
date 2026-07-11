@@ -1,19 +1,28 @@
 # MIZAAM deploy va login tizimi
 
-## Qo'shilgan asosiy funksiyalar
+## Hozirgi login talabi
 
-- Login/parol orqali kirish: `/login`
-- HTTP-only cookie session, HMAC imzo, rol va panel ruxsatlari
-- Admin / HR / Xodim rollari:
-  - `admin` — barcha panellar
-  - `manager` — UI'da HR sifatida ko'rsatiladi
-  - `employee` — xodim paneli
-- Admin/HR orqali xodim qo'shish va login-parol berish
-- Xodimlarga panel ruxsatlarini checkbox orqali berish
-- Chat, tasks, reports, attendance API'larida current user bo'yicha backend himoya
-- Xodim delete o'rniga deaktiv qilinadi (`ishdan_ketgan`) — foreign key xatolar kamayadi
-- `/403` ruxsat yo'q sahifasi
-- Render deploy uchun `.env.example`
+Admin panelga kirish:
+
+```text
+/login
+login: admin
+parol: admin123
+```
+
+Agar database ichida admin user bo'lmasa, birinchi login paytida tizim `admin / admin123` accountni avtomatik yaratadi. Agar eski deployda admin bor-u parol boshqacha bo'lgan bo'lsa, admin paroli `admin123` ga bootstrap qilinadi. Admin sidebar pastidagi **Parolni o'zgartirish** tugmasi orqali parolni almashtirgandan keyin `admin123` qayta ishlamaydi.
+
+## Qo'shilgan funksiyalar
+
+- `/login` sahifasi login/parol orqali kiradi.
+- Admin default: `admin / admin123`.
+- Admin kirgandan keyin parolni o'zgartira oladi.
+- Admin panelda korxona qo'shilganda HR uchun login, parol va login link avtomatik chiqadi.
+- Korxona kartasida **HR link** tugmasi bor: HR parolini reset qilib yangi link/parol chiqaradi.
+- HR xodim qo'shganda xodim uchun login, parol va login link avtomatik chiqadi.
+- Agar xodim qo'shishda login/parol bo'sh qoldirilsa, tizim o'zi yaratadi.
+- `tenant_id` qo'shildi: HR yaratgan xodim shu kompaniyaga bog'lanadi.
+- Backend auth/session va panel access himoyasi saqlangan.
 
 ## Render Environment Variables
 
@@ -24,7 +33,7 @@ AUTH_SECRET=kamida-32-belgili-random-secret
 SEED_TOKEN=ixtiyoriy-seed-token
 ```
 
-`AUTH_SECRET` uchun lokalda quyidagicha random qiymat oling:
+`AUTH_SECRET` uchun random qiymat:
 
 ```bash
 openssl rand -base64 32
@@ -44,29 +53,22 @@ Start Command:
 npm run start
 ```
 
-## Birinchi ishga tushirish
+`drizzle-kit push` yangi columnlarni database'ga qo'shadi: `tenant_id`, `login`, `password_hash`, `password_changed_at`, `panel_access` va boshqalar.
 
-Deploydan keyin database seed qilish:
+## Deploydan keyin
 
-Agar `SEED_TOKEN` qo'ymagan bo'lsangiz:
-
-```text
-https://SIZNING-DOMAIN/api/seed
-```
-
-Agar `SEED_TOKEN` qo'ygan bo'lsangiz:
+1. Render'da **Manual Deploy → Deploy latest commit** qiling.
+2. `/login` ga kiring.
+3. Admin bilan kiring:
 
 ```text
-https://SIZNING-DOMAIN/api/seed?token=SEED_TOKEN_QIYMATI
+login: admin
+parol: admin123
 ```
 
-Seed demo loginlari:
-
-```text
-Admin: admin / Admin12345!
-HR: hr / Hr12345!
-Xodim: xodim / Xodim12345!
-```
+4. Sidebar pastidan **Parolni o'zgartirish** orqali admin parolni o'zgartiring.
+5. `/superadmin/tenants` sahifasida korxona qo'shing — HR link/parol chiqadi.
+6. HR shu link orqali kiradi va `/employees` sahifasidan xodim qo'shadi — xodim link/parol chiqadi.
 
 ## Tekshiruv natijalari
 

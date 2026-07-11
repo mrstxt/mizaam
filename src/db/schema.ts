@@ -140,6 +140,7 @@ export const positions = pgTable("positions", {
 // Xodimlar
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   positionId: integer("position_id").references(() => positions.id),
@@ -152,6 +153,7 @@ export const users = pgTable("users", {
   telegramPassword: text("telegram_password"),
   login: text("login").unique(),
   passwordHash: text("password_hash"),
+  passwordChangedAt: timestamp("password_changed_at"),
   mustChangePassword: boolean("must_change_password").default(false),
   panelAccess: text("panel_access"),
   lastLoginAt: timestamp("last_login_at"),

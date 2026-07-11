@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+interface AccessDetails { tenantId?: number; userId?: number; role?: string; login: string; password: string; loginUrl: string; }
+
 interface Tenant {
   id: number;
   name: string;
@@ -27,6 +29,8 @@ export default function TenantsManagementPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [planFilter, setPlanFilter] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [tenantAccess, setTenantAccess] = useState<AccessDetails | null>(null);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "",
     domainPrefix: "",
@@ -58,7 +62,8 @@ export default function TenantsManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch("/api/superadmin/tenants", {
+    setError("");
+    const response = await fetch("/api/superadmin/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -66,6 +71,12 @@ export default function TenantsManagementPage() {
         expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
       }),
     });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.error || "Korxona qo'shilmadi");
+      return;
+    }
+    if (data.access) setTenantAccess(data.access);
     setShowForm(false);
     setForm({
       name: "",
@@ -81,6 +92,17 @@ export default function TenantsManagementPage() {
       contactEmail: "",
     });
     fetchTenants();
+  };
+
+  const resetHrAccess = async (id: number) => {
+    setError("");
+    const response = await fetch(`/api/superadmin/tenants/${id}/access`, { method: "POST" });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.error || "HR link yaratilmadi");
+      return;
+    }
+    setTenantAccess(data.access);
   };
 
   const toggleModule = async (id: number, moduleKey: "hasFaceIdModule" | "hasCrmModule", currentVal: boolean) => {
@@ -156,6 +178,27 @@ export default function TenantsManagementPage() {
           <option value="enterprise">Enterprise</option>
         </select>
       </div>
+
+      {error && <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">{error}</div>}
+
+      {tenantAccess && (
+        <div className="apple-card p-5 border border-emerald-200 bg-emerald-50/70">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-emerald-800">HR panel linki tayyor</p>
+              <p className="text-xs text-emerald-700/80 mt-1">Bu link, login va parolni kompaniya HR'iga yuboring. Parol faqat shu yerda ko'rinadi.</p>
+              <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Login</p><p className="font-mono font-semibold text-black/80">{tenantAccess.login}</p></div>
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Parol</p><p className="font-mono font-semibold text-black/80">{tenantAccess.password}</p></div>
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Link</p><a className="font-mono font-semibold text-[#0071e3] break-all" href={tenantAccess.loginUrl} target="_blank">{tenantAccess.loginUrl}</a></div>
+              </div>
+            </div>
+            <button onClick={() => navigator.clipboard.writeText(`Link: ${tenantAccess.loginUrl}
+Login: ${tenantAccess.login}
+Parol: ${tenantAccess.password}`)} className="apple-btn text-xs shrink-0">Copy</button>
+          </div>
+        </div>
+      )}
 
       {/* Tenants Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -261,7 +304,13 @@ export default function TenantsManagementPage() {
 
             {/* Quick Actions */}
             <div className="flex items-center justify-between border-t border-black/5 pt-3 text-xs">
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 flex-wrap">
+                <button
+                  onClick={() => resetHrAccess(t.id)}
+                  className="px-2.5 py-1 rounded bg-blue-100 text-blue-700 font-semibold hover:bg-blue-200"
+                >
+                  HR link
+                </button>
                 {t.status !== "active" && (
                   <button
                     onClick={() => changeStatus(t.id, "active")}

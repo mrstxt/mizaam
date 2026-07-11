@@ -5,6 +5,7 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export interface SessionUser {
   id: number;
+  tenantId?: number | null;
   login: string;
   role: UserRole;
   firstName: string;
