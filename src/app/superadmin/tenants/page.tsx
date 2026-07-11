@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-interface AccessDetails { tenantId?: number; userId?: number; role?: string; login: string; password: string; loginUrl: string; }
+interface AccessDetails { tenantId?: number; userId?: number; role?: string; tenantLogin?: string; login: string; password: string; loginUrl: string; }
 
 interface Tenant {
   id: number;
@@ -200,15 +200,14 @@ export default function TenantsManagementPage() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-emerald-800">HR panel linki tayyor</p>
-              <p className="text-xs text-emerald-700/80 mt-1">Bu link, login va parolni kompaniya HR'iga yuboring. Parol faqat shu yerda ko'rinadi.</p>
+              <p className="text-xs text-emerald-700/80 mt-1">Kompaniya HR'iga shu link va parolni yuboring. HR linkni ochib faqat parol kiritadi.</p>
               <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
-                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Login</p><p className="font-mono font-semibold text-black/80">{tenantAccess.login}</p></div>
-                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Parol</p><p className="font-mono font-semibold text-black/80">{tenantAccess.password}</p></div>
-                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Link</p><a className="font-mono font-semibold text-[#0071e3] break-all" href={tenantAccess.loginUrl} target="_blank">{tenantAccess.loginUrl}</a></div>
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Kompaniya login</p><p className="font-mono font-semibold text-black/80">{tenantAccess.tenantLogin || "—"}</p></div>
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">HR parol</p><p className="font-mono font-semibold text-black/80">{tenantAccess.password}</p></div>
+                <div className="rounded-xl bg-white/70 p-3"><p className="text-black/40">Panel linki</p><a className="font-mono font-semibold text-[#0071e3] break-all" href={tenantAccess.loginUrl} target="_blank">{tenantAccess.loginUrl}</a></div>
               </div>
             </div>
             <button onClick={() => navigator.clipboard.writeText(`Link: ${tenantAccess.loginUrl}
-Login: ${tenantAccess.login}
 Parol: ${tenantAccess.password}`)} className="apple-btn text-xs shrink-0">Copy</button>
           </div>
         </div>

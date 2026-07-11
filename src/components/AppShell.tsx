@@ -6,7 +6,7 @@ import Sidebar from "@/components/Sidebar";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login";
+  const isAuthPage = pathname === "/login" || /^\/[a-z0-9.]+\/login$/.test(pathname);
 
   if (isAuthPage) return <>{children}</>;
 

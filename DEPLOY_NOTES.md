@@ -27,15 +27,20 @@ HR login
 HR parol
 ```
 
-Kompaniya saqlangandan keyin tizim admin uchun HR kirish ma'lumotlarini chiqaradi:
+Kompaniya saqlangandan keyin tizim admin uchun HR panel linkini chiqaradi:
 
 ```text
-HR link
-HR login
+https://mizaam.onrender.com/{kompaniya_logini}/login
 HR parol
 ```
 
-Admin shu ma'lumotlarni kompaniya HR'iga yuboradi.
+Masalan:
+
+```text
+https://mizaam.onrender.com/orient/login
+```
+
+Admin shu link va parolni kompaniya HR'iga yuboradi. HR linkni ochadi va faqat parol kiritib katta panelga kiradi.
 
 ### 3) HR katta korxona paneliga kiradi
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { activityLogs, users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { activityLogs, tenants, users } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { findUserForLogin, jsonError } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { DEFAULT_PANELS_BY_ROLE, getDefaultLanding, isUserRole, parsePanelAccess, serializePanels } from "@/lib/permissions";
@@ -58,21 +58,46 @@ async function ensureDefaultAdminForFirstLogin(password: string) {
   });
 }
 
+async function findUserForTenantLogin(tenantLogin: string, login?: string) {
+  const [tenant] = await db
+    .select({ id: tenants.id, domainPrefix: tenants.domainPrefix, status: tenants.status })
+    .from(tenants)
+    .where(eq(tenants.domainPrefix, tenantLogin))
+    .limit(1);
+
+  if (!tenant || tenant.status === "suspended" || tenant.status === "cancelled") return null;
+
+  if (login) {
+    const user = await findUserForLogin(login);
+    if (!user || user.tenantId !== tenant.id) return null;
+    return user;
+  }
+
+  const [hrUser] = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.tenantId, tenant.id), eq(users.role, "manager"), eq(users.status, "ishlaydi")))
+    .limit(1);
+
+  return hrUser ?? null;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const login = String(body.login || "").trim().toLowerCase();
+    const tenantLogin = String(body.tenantLogin || body.companyLogin || "").trim().toLowerCase();
     const password = String(body.password || "");
 
-    if (!login || !password) {
-      return jsonError("Login va parolni kiriting", 400);
+    if ((!login && !tenantLogin) || !password) {
+      return jsonError("Login/parol yoki kompaniya parolini kiriting", 400);
     }
 
-    if (login === DEFAULT_ADMIN_LOGIN) {
+    if (!tenantLogin && login === DEFAULT_ADMIN_LOGIN) {
       await ensureDefaultAdminForFirstLogin(password);
     }
 
-    const user = await findUserForLogin(login);
+    const user = tenantLogin ? await findUserForTenantLogin(tenantLogin, login || undefined) : await findUserForLogin(login);
     if (!user || user.status !== "ishlaydi" || !isUserRole(user.role)) {
       return jsonError("Login yoki parol noto'g'ri", 401);
     }

@@ -9,8 +9,12 @@ const publicPaths = [
   "/api/seed",
 ];
 
+function isTenantLoginPath(pathname: string) {
+  return /^\/[a-z0-9.]+\/login$/.test(pathname);
+}
+
 function isPublicPath(pathname: string) {
-  return publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  return isTenantLoginPath(pathname) || publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
 function redirectToLogin(request: NextRequest) {
@@ -23,7 +27,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicPath(pathname)) {
-    if (pathname === "/login") {
+    if (pathname === "/login" || isTenantLoginPath(pathname)) {
       const session = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
       if (session) return NextResponse.redirect(new URL(getDefaultLanding(session.role, session.panels), request.url));
     }

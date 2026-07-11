@@ -10,6 +10,13 @@ export function buildLoginUrl(request: Request, login?: string | null) {
   return url.toString();
 }
 
+export function buildTenantLoginUrl(request: Request, tenantLogin: string, login?: string | null) {
+  const safeTenantLogin = slugifyLogin(tenantLogin);
+  const url = new URL(`/${safeTenantLogin}/login`, request.url);
+  if (login) url.searchParams.set("login", login);
+  return url.toString();
+}
+
 export function generatePassword(length = 10) {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
   let result = "";

@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { tenants, users } from "@/db/schema";
 import { authorize, jsonError } from "@/lib/auth";
-import { buildLoginUrl, slugifyLogin } from "@/lib/access";
+import { buildTenantLoginUrl, slugifyLogin } from "@/lib/access";
 import { hashPassword, isStrongEnoughPassword } from "@/lib/password";
 import { DEFAULT_PANELS_BY_ROLE, serializePanels } from "@/lib/permissions";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -100,9 +100,10 @@ export async function POST(request: Request) {
         tenantId: tenant.id,
         userId: hrUser.id,
         role: "HR",
+        tenantLogin: tenant.domainPrefix,
         login: hrLogin,
         password: hrPassword,
-        loginUrl: buildLoginUrl(request, hrLogin),
+        loginUrl: buildTenantLoginUrl(request, tenant.domainPrefix),
       },
     },
     { status: 201 }
